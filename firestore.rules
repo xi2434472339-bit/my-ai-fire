@@ -1,0 +1,9 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 共享台账：知道 ledger ID 的用户可读写（适合小团队内部使用）
+    match /ledgers/{ledgerId} {
+      allow read, write: if ledgerId == "sales-ledger-main";
+    }
+  }
+}
