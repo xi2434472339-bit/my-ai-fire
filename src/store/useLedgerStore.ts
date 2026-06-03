@@ -87,7 +87,8 @@ function toTime(value: string | undefined): number {
 function normalizeUpdatedAt(record: Partial<LedgerRecord>): string {
   if (toTime(record.updatedAt)) return String(record.updatedAt);
   if (toTime(record.deletedAt)) return String(record.deletedAt);
-  if (toTime(record.date)) return new Date(String(record.date)).toISOString();
+  // Sales date is business data, not a sync version. Legacy records without
+  // mutation metadata must sort behind real delete/restore/edit operations.
   return LEGACY_UPDATED_AT;
 }
 
