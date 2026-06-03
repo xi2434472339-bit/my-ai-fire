@@ -1,11 +1,12 @@
 import { getDb, LEDGER_ID, ensureAnonymousLogin, isTcbConfigured } from './tcb';
-import type { LedgerRecord } from '@/types';
+import type { LedgerRecord, RemovedRecords } from '@/types';
 
 export interface CloudLedgerData {
   records: LedgerRecord[];
   exchangeRate: number;
   knownClients: string[];
   knownTypes: string[];
+  removedRecords: RemovedRecords;
   updatedAt?: string;
 }
 
@@ -34,6 +35,7 @@ export async function pushLedger(data: CloudLedgerData): Promise<void> {
     exchangeRate: data.exchangeRate,
     knownClients: data.knownClients,
     knownTypes: data.knownTypes,
+    removedRecords: data.removedRecords,
     updatedAt: pushedAt,
   };
   if (res.data && res.data.length > 0) {
@@ -57,6 +59,10 @@ export async function fetchLedger(): Promise<CloudLedgerData | null> {
     exchangeRate: typeof raw.exchangeRate === 'number' ? raw.exchangeRate : 7,
     knownClients: Array.isArray(raw.knownClients) ? raw.knownClients as string[] : [],
     knownTypes: Array.isArray(raw.knownTypes) ? raw.knownTypes as string[] : [],
+    removedRecords:
+      raw.removedRecords && typeof raw.removedRecords === 'object'
+        ? raw.removedRecords as RemovedRecords
+        : {},
     updatedAt: typeof raw.updatedAt === 'string' ? raw.updatedAt : undefined,
   };
 }
@@ -66,11 +72,13 @@ export function getSyncableState(state: {
   exchangeRate: number;
   knownClients: string[];
   knownTypes: string[];
+  removedRecords: RemovedRecords;
 }): CloudLedgerData {
   return {
     records: state.records,
     exchangeRate: state.exchangeRate,
     knownClients: state.knownClients,
     knownTypes: state.knownTypes,
+    removedRecords: state.removedRecords,
   };
 }

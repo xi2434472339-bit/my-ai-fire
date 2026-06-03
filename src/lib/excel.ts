@@ -114,6 +114,7 @@ export function importFromExcel(
             usd,
             status: parseStatus(row[7]),
             notes: String(row[8] ?? '').trim(),
+            updatedAt: new Date().toISOString(),
           });
         }
         resolve(records);

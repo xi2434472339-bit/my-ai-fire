@@ -5,6 +5,7 @@ import type {
   LedgerRecord,
   RecordFormData,
   RecordStatus,
+  RemovedRecords,
   SortDirection,
   SortField,
   Summary,
@@ -24,6 +25,7 @@ interface LedgerState {
   sortField: SortField;
   sortDirection: SortDirection;
   selectedIds: string[];
+  removedRecords: RemovedRecords;
   knownClients: string[];
   knownTypes: string[];
   syncStatus: SyncStatus;
@@ -68,9 +70,38 @@ const defaultFilters: FilterState = {
   dateTo: '',
 };
 
+const THIRTY_DAYS = 30 * 24 * 60 * 60 * 1000;
+const LEGACY_UPDATED_AT = '1970-01-01T00:00:00.000Z';
+
 function normalizeStatus(status: unknown): RecordStatus {
   const s = String(status ?? '').trim();
   return s === '已结账' || s.includes('已结') ? '已结账' : '未结';
+}
+
+function toTime(value: string | undefined): number {
+  if (!value) return 0;
+  const time = new Date(value).getTime();
+  return Number.isFinite(time) ? time : 0;
+}
+
+function normalizeUpdatedAt(record: Partial<LedgerRecord>): string {
+  if (toTime(record.updatedAt)) return String(record.updatedAt);
+  if (toTime(record.deletedAt)) return String(record.deletedAt);
+  if (toTime(record.date)) return new Date(String(record.date)).toISOString();
+  return LEGACY_UPDATED_AT;
+}
+
+function mergeRemovedRecords(
+  localRemovedRecords: RemovedRecords,
+  cloudRemovedRecords: RemovedRecords,
+): RemovedRecords {
+  const merged: RemovedRecords = { ...localRemovedRecords };
+  for (const [id, removedAt] of Object.entries(cloudRemovedRecords)) {
+    if (toTime(removedAt) > toTime(merged[id])) {
+      merged[id] = removedAt;
+    }
+  }
+  return merged;
 }
 
 function sanitizeRecord(raw: unknown): LedgerRecord | null {
@@ -93,6 +124,7 @@ function sanitizeRecord(raw: unknown): LedgerRecord | null {
     usd: Number(r.usd) || 0,
     status: normalizeStatus(r.status),
     notes: String(r.notes ?? ''),
+    updatedAt: normalizeUpdatedAt(r),
     deletedAt: r.deletedAt ? String(r.deletedAt) : undefined,
   };
 }
@@ -105,12 +137,14 @@ function sanitizeRecords(records: unknown): LedgerRecord[] {
 }
 
 function buildRecord(data: RecordFormData, exchangeRate: number, id?: string): LedgerRecord {
+  const now = new Date().toISOString();
   const amount = calcAmount(data.quantity, data.unitPrice);
   return {
     id: id ?? generateId(),
     ...data,
     amount,
     usd: calcUsd(amount, exchangeRate),
+    updatedAt: now,
   };
 }
 
@@ -120,45 +154,62 @@ function recalcRecord(record: LedgerRecord, exchangeRate: number): LedgerRecord 
 }
 
 function createSeedRecords(): LedgerRecord[] {
-  return SEED_RECORDS.map((r) => ({ ...r, id: generateId() }));
+  const now = new Date().toISOString();
+  return SEED_RECORDS.map((r) => ({ ...r, id: generateId(), updatedAt: r.updatedAt ?? now }));
 }
 
 function mergeRecordsForSync(
   localRecords: LedgerRecord[],
   cloudRecords: LedgerRecord[],
-): LedgerRecord[] {
-  const map = new Map<string, LedgerRecord>();
-
-  for (const r of localRecords) map.set(r.id, r);
-  for (const r of cloudRecords) {
-    if (!map.has(r.id)) {
-      map.set(r.id, r);
-    }
-  }
-
-  for (const r of cloudRecords) {
-    const local = map.get(r.id);
-    if (!local) continue;
-
-    const localDeleted = local.deletedAt ? new Date(local.deletedAt).getTime() : 0;
-    const cloudDeleted = r.deletedAt ? new Date(r.deletedAt).getTime() : 0;
-
-    if (cloudDeleted > localDeleted) {
-      map.set(r.id, r);
-    }
-  }
-
-  const THIRTY_DAYS = 30 * 24 * 60 * 60 * 1000;
+  localRemovedRecords: RemovedRecords,
+  cloudRemovedRecords: RemovedRecords,
+): { records: LedgerRecord[]; removedRecords: RemovedRecords } {
+  const localById = new Map(localRecords.map((r) => [r.id, r]));
+  const cloudById = new Map(cloudRecords.map((r) => [r.id, r]));
+  const removedRecords = mergeRemovedRecords(localRemovedRecords, cloudRemovedRecords);
+  const ids = new Set([
+    ...localById.keys(),
+    ...cloudById.keys(),
+    ...Object.keys(removedRecords),
+  ]);
   const now = Date.now();
   const result: LedgerRecord[] = [];
-  for (const r of map.values()) {
-    if (r.deletedAt) {
-      const age = now - new Date(r.deletedAt).getTime();
-      if (age >= THIRTY_DAYS) continue;
+
+  for (const id of ids) {
+    const local = localById.get(id);
+    const cloud = cloudById.get(id);
+    const newest =
+      !cloud || (local && toTime(local.updatedAt) >= toTime(cloud.updatedAt))
+        ? local
+        : cloud;
+
+    if (!newest) continue;
+
+    const removedAt = toTime(removedRecords[id]);
+    if (removedAt > toTime(newest.updatedAt)) continue;
+
+    if (newest.deletedAt) {
+      const age = now - toTime(newest.deletedAt);
+      if (age >= THIRTY_DAYS) {
+        removedRecords[id] = new Date(Math.max(now, removedAt)).toISOString();
+        continue;
+      }
     }
-    result.push(r);
+
+    result.push(newest);
   }
-  return result;
+
+  return { records: result, removedRecords };
+}
+
+function pruneRecordsWithRemovedTombstones(
+  records: LedgerRecord[],
+  removedRecords: RemovedRecords,
+): LedgerRecord[] {
+  return records.filter((record) => {
+    const removedAt = toTime(removedRecords[record.id]);
+    return !removedAt || removedAt <= toTime(record.updatedAt);
+  });
 }
 
 async function maybePushToCloud(get: () => LedgerState) {
@@ -169,7 +220,21 @@ async function maybePushToCloud(get: () => LedgerState) {
     const cloudData = await fetchLedger();
     let recordsToPush = getSyncableState(state);
     if (cloudData) {
-      recordsToPush = { ...recordsToPush, records: mergeRecordsForSync(state.records, cloudData.records) };
+      const merged = mergeRecordsForSync(
+        state.records,
+        sanitizeRecords(cloudData.records),
+        state.removedRecords,
+        cloudData.removedRecords,
+      );
+      recordsToPush = {
+        ...recordsToPush,
+        records: merged.records,
+        removedRecords: merged.removedRecords,
+      };
+      useLedgerStore.setState({
+        records: merged.records,
+        removedRecords: merged.removedRecords,
+      });
     }
     await pushLedger(recordsToPush);
     useLedgerStore.getState().setSyncStatus('synced');
@@ -266,6 +331,7 @@ export const useLedgerStore = create<LedgerState>()(
       sortField: 'date',
       sortDirection: 'desc',
       selectedIds: [],
+      removedRecords: {},
       knownClients: ['鏄ョ敓', '瀹囬', '闃挎澃', '杩堝反璧彁绡瓙'],
       knownTypes: ['群码作品粉', '精准作品粉', '视频号冲颉粉'],
       syncStatus: isConfigured() ? 'connecting' : 'local',
@@ -274,9 +340,15 @@ export const useLedgerStore = create<LedgerState>()(
       setSyncStatus: (status) => set({ syncStatus: status }),
 
       hydrateFromCloud: (data) => {
+        const removedRecords = data.removedRecords ?? {};
+        const records = pruneRecordsWithRemovedTombstones(
+          sanitizeRecords(data.records),
+          removedRecords,
+        );
         set({
           isHydratingFromCloud: true,
-          records: sanitizeRecords(data.records),
+          records,
+          removedRecords,
           exchangeRate:
             typeof data.exchangeRate === 'number' && data.exchangeRate > 0
               ? data.exchangeRate
@@ -371,9 +443,10 @@ export const useLedgerStore = create<LedgerState>()(
       },
 
       deleteRecord: (id) => {
+        const now = new Date().toISOString();
         set((state) => ({
           records: state.records.map((r) =>
-            r.id === id ? { ...r, deletedAt: new Date().toISOString() } : r,
+            r.id === id ? { ...r, deletedAt: now, updatedAt: now } : r,
           ),
           selectedIds: state.selectedIds.filter((sid) => sid !== id),
         }));
@@ -386,7 +459,7 @@ export const useLedgerStore = create<LedgerState>()(
           const now = new Date().toISOString();
           return {
             records: state.records.map((r) =>
-              ids.has(r.id) ? { ...r, deletedAt: now } : r,
+              ids.has(r.id) ? { ...r, deletedAt: now, updatedAt: now } : r,
             ),
             selectedIds: [],
           };
@@ -397,10 +470,11 @@ export const useLedgerStore = create<LedgerState>()(
       settleSelected: () => {
         set((state) => {
           const ids = new Set(state.selectedIds);
+          const now = new Date().toISOString();
           return {
             records: state.records.map((r) =>
               ids.has(r.id) && r.status === '未结'
-                ? { ...r, status: '已结账' as RecordStatus }
+                ? { ...r, status: '已结账' as RecordStatus, updatedAt: now }
                 : r,
             ),
             selectedIds: [],
@@ -410,10 +484,14 @@ export const useLedgerStore = create<LedgerState>()(
       },
 
       settleRecord: (id) => {
+        const now = new Date().toISOString();
         set((state) => ({
           records: state.records.map((r) =>
-            r.id === id ? { ...r, status: '已结账' as RecordStatus } : r,
+            r.id === id
+              ? { ...r, status: '已结账' as RecordStatus, updatedAt: now }
+              : r,
           ),
+          selectedIds: state.selectedIds.filter((sid) => sid !== id),
         }));
         void maybePushToCloud(get);
       },
@@ -422,12 +500,14 @@ export const useLedgerStore = create<LedgerState>()(
         set((state) => {
           const clients = new Set(state.knownClients);
           const types = new Set(state.knownTypes);
-          imported.forEach((r) => {
+          const now = new Date().toISOString();
+          const records = imported.map((r) => ({ ...r, updatedAt: now }));
+          records.forEach((r) => {
             clients.add(r.client);
             if (r.type) types.add(r.type);
           });
           return {
-            records: [...state.records, ...imported],
+            records: [...state.records, ...records],
             knownClients: [...clients],
             knownTypes: [...types],
           };
@@ -439,6 +519,7 @@ export const useLedgerStore = create<LedgerState>()(
         set({
           records: createSeedRecords(),
           selectedIds: [],
+          removedRecords: {},
         });
         void maybePushToCloud(get);
       },
@@ -452,29 +533,36 @@ export const useLedgerStore = create<LedgerState>()(
       },
 
       restoreRecord: (id) => {
+        const now = new Date().toISOString();
         set((state) => ({
           records: state.records.map((r) =>
-            r.id === id ? { ...r, deletedAt: undefined } : r,
+            r.id === id ? { ...r, deletedAt: undefined, updatedAt: now } : r,
           ),
         }));
         void maybePushToCloud(get);
       },
 
       permanentlyDeleteRecord: (id) => {
+        const now = new Date().toISOString();
         set((state) => ({
           records: state.records.filter((r) => r.id !== id),
+          removedRecords: { ...state.removedRecords, [id]: now },
         }));
         void maybePushToCloud(get);
       },
 
       purgeExpiredTrash: () => {
-        const THIRTY_DAYS = 30 * 24 * 60 * 60 * 1000;
         const now = Date.now();
-        set((state) => ({
-          records: state.records.filter(
-            (r) => !r.deletedAt || now - new Date(r.deletedAt).getTime() < THIRTY_DAYS,
-          ),
-        }));
+        const removedAt = new Date().toISOString();
+        set((state) => {
+          const removedRecords = { ...state.removedRecords };
+          const records = state.records.filter((r) => {
+            const expired = Boolean(r.deletedAt && now - toTime(r.deletedAt) >= THIRTY_DAYS);
+            if (expired) removedRecords[r.id] = removedAt;
+            return !expired;
+          });
+          return { records, removedRecords };
+        });
         void maybePushToCloud(get);
       },
 
@@ -490,6 +578,7 @@ export const useLedgerStore = create<LedgerState>()(
       version: 1,
       partialize: (state) => ({
         records: state.records,
+        removedRecords: state.removedRecords,
         exchangeRate: state.exchangeRate,
         darkMode: state.darkMode,
         knownClients: state.knownClients,
@@ -505,6 +594,10 @@ export const useLedgerStore = create<LedgerState>()(
         return {
           ...current,
           records: sanitizeRecords(p?.records),
+          removedRecords:
+            p?.removedRecords && typeof p.removedRecords === 'object'
+              ? p.removedRecords
+              : current.removedRecords,
           exchangeRate:
             typeof p?.exchangeRate === 'number' && p.exchangeRate > 0
               ? p.exchangeRate
@@ -519,5 +612,3 @@ export const useLedgerStore = create<LedgerState>()(
     },
   ),
 );
-
-

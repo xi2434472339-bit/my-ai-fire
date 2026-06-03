@@ -2,11 +2,20 @@
 
 ## 2026-06-04
 
+### L2/P0：record-level 同步元数据
+
+- [x] LedgerRecord 增加 updatedAt
+- [x] CloudLedgerData / store 增加 removedRecords
+- [x] add/update/delete/restore/settle/import 刷新 record.updatedAt
+- [x] 永久删除和清空回收站写入 removedRecords tombstone
+- [x] mergeRecordsForSync 改为 updatedAt + removedRecords 合并规则
+- [x] npx tsc --noEmit 零错误
+
 ### L2：push 前合并云端数据（防止旧数据覆盖删除）
 
 - [x] 新增 mergeRecordsForSync 函数：按 id 合并 local/cloud records
 - [x] 修改 maybePushToCloud：push 前 fetch 云端最新数据并合并
-- [x] 合并规则：cloud deletedAt 优先级 > local，过期 tombstone 自动清理
+- [x] 合并规则：record.updatedAt 较新者获胜，removedRecords 防永久删除复活
 - [x] tsc --noEmit 零错误
 
 ### L2 严重 Bug：删除后同步复活

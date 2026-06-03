@@ -13,6 +13,7 @@
 - [x] 本地开发禁用云同步机制
 - [x] Bug 修复：sanitizeRecord 漏掉 deletedAt 导致删除复活
 - [x] Bug 修复：push 全量覆盖导致旧数据覆盖删除 (merge-before-push)
+- [x] P0 修复：record.updatedAt + removedRecords 支持删除/恢复/清空回收站同步
 - [ ] 初始化 Git + 提交所有修改
 - [ ] 补充种子数据
 - [ ] 清理死代码（firebase.ts）

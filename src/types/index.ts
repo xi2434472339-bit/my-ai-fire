@@ -13,8 +13,11 @@ export interface LedgerRecord {
   usd: number;
   status: RecordStatus;
   notes: string;
+  updatedAt: string;
   deletedAt?: string;
 }
+
+export type RemovedRecords = Record<string, string>;
 
 export type SortField = keyof Pick<
   LedgerRecord,
