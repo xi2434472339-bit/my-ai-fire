@@ -150,7 +150,12 @@ function buildRecord(data: RecordFormData, exchangeRate: number, id?: string): L
 
 function recalcRecord(record: LedgerRecord, exchangeRate: number): LedgerRecord {
   const amount = calcAmount(record.quantity, record.unitPrice);
-  return { ...record, amount, usd: calcUsd(amount, exchangeRate) };
+  return {
+    ...record,
+    amount,
+    usd: calcUsd(amount, exchangeRate),
+    updatedAt: new Date().toISOString(),
+  };
 }
 
 function createSeedRecords(): LedgerRecord[] {
@@ -433,7 +438,9 @@ export const useLedgerStore = create<LedgerState>()(
             : [...state.knownTypes, data.type];
           return {
             records: state.records.map((r) =>
-              r.id === id ? buildRecord(data, state.exchangeRate, id) : r,
+              r.id === id
+                ? { ...buildRecord(data, state.exchangeRate, id), deletedAt: r.deletedAt }
+                : r,
             ),
             knownClients,
             knownTypes,
