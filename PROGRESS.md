@@ -2,6 +2,13 @@
 
 ## 2026-06-04
 
+### L2：自动备份 + 动态汇总
+- [x] 新增 src/lib/backup.ts，支持 CloudBase backups / localStorage 备份
+- [x] 新增 src/hooks/useAutoBackup.ts，打开网页且超过 12 小时自动备份
+- [x] 首页新增“启用自动备份”开关，默认开启并持久化
+- [x] 左上角 Dashboard 与底部 FooterSummary 拆分 summary 数据来源
+- [x] npx tsc --noEmit 零错误
+
 ### L2/P0：record-level 同步元数据
 
 - [x] LedgerRecord 增加 updatedAt

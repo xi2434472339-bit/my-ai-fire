@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+### Added (2026-06-04) - 自动备份与动态汇总
+
+- 新增自动备份最小可用版本：打开网页且距离上次备份超过 12 小时自动创建备份。
+- CloudBase 可用时写入 backups 集合；本地/禁用云同步时写入 localStorage。
+- 自动备份默认开启，首页提供开关并持久化保存。
+- 左上角 Dashboard 继续只统计勾选记录；底部 FooterSummary 改为统计当前筛选后的表格记录。
+
 ### P0 Fixed (2026-06-04) - record-level sync metadata
 
 - LedgerRecord 新增 updatedAt，用于判断删除、恢复、编辑、结账的最新状态

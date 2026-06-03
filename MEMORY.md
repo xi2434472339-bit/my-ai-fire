@@ -18,6 +18,9 @@
 - removedRecords 用于同步永久删除/清空回收站，removedAt 晚于 record.updatedAt 时记录不再恢复
 - hydrateFromCloud 全量替换本地 records，sanitizeRecord 必须保留 deletedAt
 - Dashboard 汇总：仅统计已选中记录
+- FooterSummary 汇总：统计当前筛选后表格实际显示的记录，不受 selectedIds 影响
+- 自动备份：useAutoBackup 在打开网页且距离上次备份超过 12 小时时触发；CloudBase 可用时写 backups 集合，本地模式写 localStorage.sales-ledger-backups
+- 自动备份状态：autoBackupEnabled 默认开启，lastBackupAt 与开关一起持久化到 sales-ledger-storage
 - 环境安全：VITE_APP_ENV=development 时强制禁用云同步
 - 超过 30 天的 deletedAt tombstone 在 push 合并时转入 removedRecords
 

@@ -30,8 +30,12 @@ interface LedgerState {
   knownTypes: string[];
   syncStatus: SyncStatus;
   isHydratingFromCloud: boolean;
+  autoBackupEnabled: boolean;
+  lastBackupAt: string | null;
 
   setSyncStatus: (status: SyncStatus) => void;
+  setAutoBackupEnabled: (enabled: boolean) => void;
+  setLastBackupAt: (backupAt: string) => void;
   hydrateFromCloud: (data: CloudLedgerData) => void;
   syncToCloud: () => Promise<void>;
 
@@ -342,8 +346,12 @@ export const useLedgerStore = create<LedgerState>()(
       knownTypes: ['群码作品粉', '精准作品粉', '视频号冲颉粉'],
       syncStatus: isConfigured() ? 'connecting' : 'local',
       isHydratingFromCloud: false,
+      autoBackupEnabled: true,
+      lastBackupAt: null,
 
       setSyncStatus: (status) => set({ syncStatus: status }),
+      setAutoBackupEnabled: (enabled) => set({ autoBackupEnabled: enabled }),
+      setLastBackupAt: (backupAt) => set({ lastBackupAt: backupAt }),
 
       hydrateFromCloud: (data) => {
         const removedRecords = data.removedRecords ?? {};
@@ -591,6 +599,8 @@ export const useLedgerStore = create<LedgerState>()(
         darkMode: state.darkMode,
         knownClients: state.knownClients,
         knownTypes: state.knownTypes,
+        autoBackupEnabled: state.autoBackupEnabled,
+        lastBackupAt: state.lastBackupAt,
       }),
       onRehydrateStorage: () => (state) => {
         if (state?.darkMode) {
@@ -613,6 +623,12 @@ export const useLedgerStore = create<LedgerState>()(
           darkMode: Boolean(p?.darkMode),
           knownClients: Array.isArray(p?.knownClients) ? p.knownClients : current.knownClients,
           knownTypes: Array.isArray(p?.knownTypes) ? p.knownTypes : current.knownTypes,
+          autoBackupEnabled:
+            typeof p?.autoBackupEnabled === 'boolean'
+              ? p.autoBackupEnabled
+              : current.autoBackupEnabled,
+          lastBackupAt:
+            typeof p?.lastBackupAt === 'string' ? p.lastBackupAt : current.lastBackupAt,
           selectedIds: [],
           filters: { ...defaultFilters },
         };

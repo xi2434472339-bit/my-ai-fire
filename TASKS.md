@@ -9,6 +9,9 @@
 
 ## L2 中任务
 
+- [x] 自动备份最小可用版本（CloudBase backups / localStorage，保留最近 30 份）
+- [x] 动态汇总拆分：Dashboard 统计勾选记录，FooterSummary 统计当前筛选结果
+
 - [x] Dashboard 汇总仅统计选中记录
 - [x] 本地开发禁用云同步机制
 - [x] Bug 修复：sanitizeRecord 漏掉 deletedAt 导致删除复活

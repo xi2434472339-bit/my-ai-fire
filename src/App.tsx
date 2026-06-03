@@ -7,6 +7,7 @@ import {
   computeSummary,
 } from '@/store/useLedgerStore';
 import { useCloudSync } from '@/hooks/useCloudSync';
+import { useAutoBackup } from '@/hooks/useAutoBackup';
 import { Dashboard, FooterSummary } from '@/components/Dashboard';
 import { Filters, ExchangeRateSetting } from '@/components/Filters';
 import { LedgerTable } from '@/components/LedgerTable';
@@ -26,13 +27,24 @@ function isAuthenticated(): boolean {
 
 function LedgerApp() {
   useCloudSync();
-  const { allRecords, selectedIds, filters, sortField, sortDirection } = useLedgerStore(
+  useAutoBackup();
+  const {
+    allRecords,
+    selectedIds,
+    filters,
+    sortField,
+    sortDirection,
+    autoBackupEnabled,
+    setAutoBackupEnabled,
+  } = useLedgerStore(
     useShallow((s) => ({
       allRecords: s.records,
       selectedIds: s.selectedIds,
       filters: s.filters,
       sortField: s.sortField,
       sortDirection: s.sortDirection,
+      autoBackupEnabled: s.autoBackupEnabled,
+      setAutoBackupEnabled: s.setAutoBackupEnabled,
     })),
   );
 
@@ -41,13 +53,15 @@ function LedgerApp() {
     [allRecords, filters, sortField, sortDirection],
   );
 
-  const summary = useMemo(() => {
+  const selectedSummary = useMemo(() => {
     if (selectedIds.length === 0) {
       return { totalRmb: 0, settledRmb: 0, unsettledRmb: 0, unsettledUsd: 0 };
     }
     const selected = allRecords.filter((r) => selectedIds.includes(r.id));
     return computeSummary(selected);
   }, [allRecords, selectedIds]);
+
+  const filteredSummary = useMemo(() => computeSummary(records), [records]);
 
   const [formOpen, setFormOpen] = useState(false);
   const [editingRecord, setEditingRecord] = useState<LedgerRecord | null>(null);
@@ -87,7 +101,7 @@ function LedgerApp() {
             </div>
           </div>
           <div className="w-full sm:w-auto">
-            <Dashboard summary={summary} />
+            <Dashboard summary={selectedSummary} />
           </div>
         </div>
       </header>
@@ -95,6 +109,15 @@ function LedgerApp() {
       <main className="mx-auto max-w-7xl space-y-4 px-4 py-6 md:px-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <ExchangeRateSetting />
+          <label className="inline-flex items-center gap-2 rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
+            <input
+              type="checkbox"
+              className="h-4 w-4 rounded"
+              checked={autoBackupEnabled}
+              onChange={(event) => setAutoBackupEnabled(event.target.checked)}
+            />
+            启用自动备份
+          </label>
         </div>
 
         <Filters />
@@ -103,7 +126,7 @@ function LedgerApp() {
 
         <LedgerTable records={records} onEdit={handleEdit} />
 
-        <FooterSummary summary={summary} />
+        <FooterSummary summary={filteredSummary} />
       </main>
 
       <RecordForm open={formOpen} onClose={handleCloseForm} record={editingRecord} />
