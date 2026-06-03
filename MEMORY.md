@@ -26,3 +26,4 @@
 - sanitizeRecord 返回字段必须对齐 LedgerRecord，漏字段会导致 pull 时数据丢失
 - 旧数据没有 updatedAt 时，sanitizeRecord 会自动补默认值用于同步合并
 - push 从前是全量覆盖，现已改为 fetch-merge-push 流程
+- 旧客户端如果在永久删除后继续编辑同一条旧记录，并产生更晚 updatedAt，可能赢过 removed tombstone
