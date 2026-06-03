@@ -11,6 +11,7 @@
 
 - [x] Dashboard 汇总仅统计选中记录
 - [x] 本地开发禁用云同步机制
+- [x] Bug 修复：删除后同步复活（sanitizeRecord 漏掉 deletedAt）
 - [ ] 初始化 Git 仓库并提交
 - [ ] 补充种子数据（SEED_RECORDS）
 - [ ] 清理死代码（src/lib/firebase.ts）

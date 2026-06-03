@@ -93,6 +93,7 @@ function sanitizeRecord(raw: unknown): LedgerRecord | null {
     usd: Number(r.usd) || 0,
     status: normalizeStatus(r.status),
     notes: String(r.notes ?? ''),
+    deletedAt: r.deletedAt ? String(r.deletedAt) : undefined,
   };
 }
 
