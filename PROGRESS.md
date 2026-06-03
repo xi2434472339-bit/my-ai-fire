@@ -2,23 +2,28 @@
 
 ## 2026-06-04
 
-### L2 严重 Bug：删除数据后同步复活
+### L2：push 前合并云端数据（防止旧数据覆盖删除）
 
-- [x] 定位根因：sanitizeRecord() 丢掉 deletedAt
-- [x] 修复：sanitizeRecord 增加 deletedAt 字段
+- [x] 新增 mergeRecordsForSync 函数：按 id 合并 local/cloud records
+- [x] 修改 maybePushToCloud：push 前 fetch 云端最新数据并合并
+- [x] 合并规则：cloud deletedAt 优先级 > local，过期 tombstone 自动清理
 - [x] tsc --noEmit 零错误
+
+### L2 严重 Bug：删除后同步复活
+
+- [x] 定位根因：sanitizeRecord 丢弃 deletedAt
+- [x] 修复：sanitizeRecord 增加 deletedAt 字段
 
 ### L1+L2：多项 UI 和逻辑修复
 
-- [x] 状态筛选 × 按钮与下拉箭头分离
-- [x] settleSelected/settleRecord 补全 selectedIds 清除
-- [x] Dashboard 右上角汇总仅统计选中记录
-- [x] 客户搜索 ChevronDown + 统一样式
+- [x] 状态筛选 × 按钮分离
+- [x] settleSelected/settleRecord 补全 selectedIds
+- [x] Dashboard 汇总仅统计选中
+- [x] 客户搜索统一样式
 
 ### L2：本地开发禁用云同步
 
-- [x] tcb.ts 增加 VITE_ENABLE_CLOUD_SYNC + VITE_APP_ENV 安全守卫
-- [x] SyncStatus 本地测试模式紫色标签
+- [x] tcb.ts 安全守卫 + SyncStatus 本地模式
 
 ## 2026-06-03
 

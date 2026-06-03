@@ -2,31 +2,25 @@
 
 ## [Unreleased]
 
-### Fixed (2026-06-04) - 严重 Bug：删除数据后同步复活
+### Security Fix (2026-06-04) - push 前合并云端数据
 
-- 根因：sanitizeRecord() 在 pull 云端数据时丢弃了 deletedAt 字段
-- 修复：sanitizeRecord 现在保留 deletedAt（r.deletedAt ? String(r.deletedAt) : undefined）
-- 影响：修复前 pull 会全量替换 records 导致所有软删除标记丢失
+- 新增 mergeRecordsForSync：按 id 合并 local+cloud records
+- cloud deletedAt 优先级高于 local（防止旧记录覆盖删除）
+- 修改 maybePushToCloud：push 前 fetchLedger → merge → pushLedger
+- 过期 tombstone（>30天）在合并时自动清理
+
+### Fixed (2026-06-04) - 删除后同步复活
+
+- sanitizeRecord 现在保留 deletedAt 字段
 
 ### Added (2026-06-04)
 
-- 本地开发云同步禁用机制：VITE_ENABLE_CLOUD_SYNC 控制 push/pull/poll
-- VITE_APP_ENV=development 安全守卫：开发环境强制禁止云同步
-- SyncStatus 本地测试模式紫色标签
+- 本地开发云同步禁用 + VITE_APP_ENV 安全守卫
 
 ### Fix (2026-06-04)
 
-- 状态筛选 × 按钮与下拉箭头分离
-- settleSelected/settleRecord 补全 selectedIds 清空
-- Dashboard 右上角汇总仅统计选中记录
-- 客户搜索添加 ChevronDown 箭头，统一样式
+- 状态筛选/客户搜索 UI 统一
 
 ### Added (2026-06-03)
 
-- 筛选框清空按钮
-- 批量操作后自动取消选中
-
-### Doc
-
-- README 更新为 CloudBase + 环境变量说明
-- 纠正已结账不可逆的错误结论
+- 筛选清空按钮 + 批量自动取消选中

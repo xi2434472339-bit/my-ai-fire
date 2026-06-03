@@ -12,7 +12,7 @@ import type {
 } from '@/types';
 import { SEED_RECORDS } from '@/data/seed';
 import { calcAmount, calcUsd } from '@/lib/format';
-import { getSyncableState, pushLedger, isConfigured } from '@/lib/sync';
+import { getSyncableState, pushLedger, isConfigured, fetchLedger } from '@/lib/sync';
 import { generateId } from '@/lib/utils';
 import type { CloudLedgerData } from '@/lib/sync';
 
@@ -123,12 +123,55 @@ function createSeedRecords(): LedgerRecord[] {
   return SEED_RECORDS.map((r) => ({ ...r, id: generateId() }));
 }
 
+function mergeRecordsForSync(
+  localRecords: LedgerRecord[],
+  cloudRecords: LedgerRecord[],
+): LedgerRecord[] {
+  const map = new Map<string, LedgerRecord>();
+
+  for (const r of localRecords) map.set(r.id, r);
+  for (const r of cloudRecords) {
+    if (!map.has(r.id)) {
+      map.set(r.id, r);
+    }
+  }
+
+  for (const r of cloudRecords) {
+    const local = map.get(r.id);
+    if (!local) continue;
+
+    const localDeleted = local.deletedAt ? new Date(local.deletedAt).getTime() : 0;
+    const cloudDeleted = r.deletedAt ? new Date(r.deletedAt).getTime() : 0;
+
+    if (cloudDeleted > localDeleted) {
+      map.set(r.id, r);
+    }
+  }
+
+  const THIRTY_DAYS = 30 * 24 * 60 * 60 * 1000;
+  const now = Date.now();
+  const result: LedgerRecord[] = [];
+  for (const r of map.values()) {
+    if (r.deletedAt) {
+      const age = now - new Date(r.deletedAt).getTime();
+      if (age >= THIRTY_DAYS) continue;
+    }
+    result.push(r);
+  }
+  return result;
+}
+
 async function maybePushToCloud(get: () => LedgerState) {
   if (!isConfigured()) return;
   const state = get();
   if (state.isHydratingFromCloud) return;
   try {
-    await pushLedger(getSyncableState(state));
+    const cloudData = await fetchLedger();
+    let recordsToPush = getSyncableState(state);
+    if (cloudData) {
+      recordsToPush = { ...recordsToPush, records: mergeRecordsForSync(state.records, cloudData.records) };
+    }
+    await pushLedger(recordsToPush);
     useLedgerStore.getState().setSyncStatus('synced');
   } catch {
     useLedgerStore.getState().setSyncStatus('error');
