@@ -10,6 +10,7 @@
 ## L2 中任务
 
 - [x] 自动备份最小可用版本（CloudBase backups / localStorage，保留最近 30 份）
+- [x] 自动备份 P1：上次备份时间、立即备份、状态提示、backups 权限检测
 - [x] 动态汇总拆分：Dashboard 统计勾选记录，FooterSummary 统计当前筛选结果
 
 - [x] Dashboard 汇总仅统计选中记录

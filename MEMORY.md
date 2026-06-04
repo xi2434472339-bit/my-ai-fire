@@ -20,7 +20,9 @@
 - Dashboard 汇总：仅统计已选中记录
 - FooterSummary 汇总：统计当前筛选后表格实际显示的记录，不受 selectedIds 影响
 - 自动备份：useAutoBackup 在打开网页且距离上次备份超过 12 小时时触发；CloudBase 可用时写 backups 集合，本地模式写 localStorage.sales-ledger-backups
-- 自动备份状态：autoBackupEnabled 默认开启，lastBackupAt 与开关一起持久化到 sales-ledger-storage
+- 自动备份状态：autoBackupEnabled 默认开启，lastBackupAt 与开关一起持久化到 sales-ledger-storage；backupStatus 仅用于当前页面显示备份中/成功/失败
+- 手动备份：BackupStatus 中的“立即备份”直接调用 createLedgerBackup，不受 12 小时自动备份间隔限制，成功后刷新 lastBackupAt
+- backups 权限检测：testBackupPermission 只操作 CloudBase backups 集合，新增 isPermissionTest 测试数据后立即删除同一条测试数据，不触碰 ledgers 集合
 - 环境安全：VITE_APP_ENV=development 时强制禁用云同步
 - 超过 30 天的 deletedAt tombstone 在 push 合并时转入 removedRecords
 

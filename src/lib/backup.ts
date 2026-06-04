@@ -5,6 +5,12 @@ import type { LedgerRecord, RemovedRecords } from '@/types';
 const LOCAL_BACKUPS_KEY = 'sales-ledger-backups';
 const MAX_BACKUPS = 30;
 
+export type BackupPermissionStatus =
+  | 'not_checked'
+  | 'normal'
+  | 'add_failed'
+  | 'delete_failed';
+
 export interface BackupInput {
   records: LedgerRecord[];
   removedRecords: RemovedRecords;
@@ -94,4 +100,55 @@ export async function createLedgerBackup(input: BackupInput): Promise<BackupResu
     return createLocalBackup(input);
   }
   return createCloudBackup(input);
+}
+
+export async function testBackupPermission(): Promise<BackupPermissionStatus> {
+  if (!isConfigured()) return 'not_checked';
+
+  const createdAt = new Date().toISOString();
+  let testDocId = '';
+  let db: NonNullable<ReturnType<typeof getDb>>;
+
+  try {
+    await ensureAnonymousLogin();
+    const activeDb = getDb();
+    if (!activeDb) return 'add_failed';
+    db = activeDb;
+  } catch {
+    return 'add_failed';
+  }
+
+  const col = db.collection('backups');
+
+  try {
+    const addResult = (await col.add({
+      ledgerId: LEDGER_ID,
+      isPermissionTest: true,
+      createdAt,
+    })) as { id?: string; _id?: string };
+    testDocId = String(addResult.id ?? addResult._id ?? '');
+  } catch {
+    return 'add_failed';
+  }
+
+  try {
+    if (!testDocId) {
+      const res = await col
+        .where({
+          ledgerId: db.command.eq(LEDGER_ID),
+          isPermissionTest: db.command.eq(true),
+          createdAt: db.command.eq(createdAt),
+        })
+        .get();
+      const match = (res.data ?? [])[0] as Record<string, unknown> | undefined;
+      testDocId = typeof match?._id === 'string' ? match._id : '';
+    }
+
+    if (!testDocId) return 'delete_failed';
+
+    await col.doc(testDocId).remove();
+    return 'normal';
+  } catch {
+    return 'delete_failed';
+  }
 }

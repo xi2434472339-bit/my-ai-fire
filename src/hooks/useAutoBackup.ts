@@ -22,6 +22,7 @@ export function useAutoBackup() {
     lastBackupAt,
     syncStatus,
     setLastBackupAt,
+    setBackupStatus,
   } = useLedgerStore(
     useShallow((state) => ({
       records: state.records,
@@ -31,6 +32,7 @@ export function useAutoBackup() {
       lastBackupAt: state.lastBackupAt,
       syncStatus: state.syncStatus,
       setLastBackupAt: state.setLastBackupAt,
+      setBackupStatus: state.setBackupStatus,
     })),
   );
 
@@ -41,14 +43,17 @@ export function useAutoBackup() {
     if (inFlightRef.current) return;
 
     inFlightRef.current = true;
+    setBackupStatus('backing-up');
     void createLedgerBackup({ records, removedRecords, exchangeRate })
       .then((result) => {
         setLastBackupAt(result.createdAt);
+        setBackupStatus('success');
         console.info(
           `[sales-ledger] 自动备份完成：${result.target}，${result.recordCount} 条，${result.createdAt}`,
         );
       })
       .catch((error) => {
+        setBackupStatus('error');
         console.warn('[sales-ledger] 自动备份失败', error);
       })
       .finally(() => {
@@ -60,6 +65,7 @@ export function useAutoBackup() {
     lastBackupAt,
     records,
     removedRecords,
+    setBackupStatus,
     setLastBackupAt,
     syncStatus,
   ]);

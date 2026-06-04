@@ -36,5 +36,7 @@
 
 - 自动备份：打开网页时若距离上次备份超过 12 小时，会自动备份 records、removedRecords、exchangeRate、createdAt、recordCount；正式云同步环境写入 CloudBase backups 集合，本地/禁用云同步时写入 localStorage。
 - 备份开关：首页提供“启用自动备份”复选框，默认开启，并通过 Zustand persist 保存。
+- 备份状态：展示上一次备份时间、立即备份按钮、备份中/成功/失败状态，以及当前备份保存模式。
+- 备份权限检测：云端模式可对 CloudBase backups 集合执行测试新增和测试删除，仅处理带 isPermissionTest 的测试数据，不影响 ledgers 集合。
 - 备份保留：只保留最近 30 份备份，超出后删除最旧备份。
 - 动态汇总：左上角 Dashboard 只统计当前勾选记录；底部 FooterSummary 统计当前表格筛选后的记录，不受勾选状态影响。

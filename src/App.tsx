@@ -9,6 +9,7 @@ import {
 import { useCloudSync } from '@/hooks/useCloudSync';
 import { useAutoBackup } from '@/hooks/useAutoBackup';
 import { Dashboard, FooterSummary } from '@/components/Dashboard';
+import { BackupStatus } from '@/components/BackupStatus';
 import { Filters, ExchangeRateSetting } from '@/components/Filters';
 import { LedgerTable } from '@/components/LedgerTable';
 import { RecordForm } from '@/components/RecordForm';
@@ -34,8 +35,6 @@ function LedgerApp() {
     filters,
     sortField,
     sortDirection,
-    autoBackupEnabled,
-    setAutoBackupEnabled,
   } = useLedgerStore(
     useShallow((s) => ({
       allRecords: s.records,
@@ -43,8 +42,6 @@ function LedgerApp() {
       filters: s.filters,
       sortField: s.sortField,
       sortDirection: s.sortDirection,
-      autoBackupEnabled: s.autoBackupEnabled,
-      setAutoBackupEnabled: s.setAutoBackupEnabled,
     })),
   );
 
@@ -109,15 +106,7 @@ function LedgerApp() {
       <main className="mx-auto max-w-7xl space-y-4 px-4 py-6 md:px-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <ExchangeRateSetting />
-          <label className="inline-flex items-center gap-2 rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
-            <input
-              type="checkbox"
-              className="h-4 w-4 rounded"
-              checked={autoBackupEnabled}
-              onChange={(event) => setAutoBackupEnabled(event.target.checked)}
-            />
-            启用自动备份
-          </label>
+          <BackupStatus />
         </div>
 
         <Filters />

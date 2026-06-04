@@ -1,6 +1,7 @@
 ﻿import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type {
+  BackupRunStatus,
   FilterState,
   LedgerRecord,
   RecordFormData,
@@ -32,10 +33,12 @@ interface LedgerState {
   isHydratingFromCloud: boolean;
   autoBackupEnabled: boolean;
   lastBackupAt: string | null;
+  backupStatus: BackupRunStatus;
 
   setSyncStatus: (status: SyncStatus) => void;
   setAutoBackupEnabled: (enabled: boolean) => void;
   setLastBackupAt: (backupAt: string) => void;
+  setBackupStatus: (status: BackupRunStatus) => void;
   hydrateFromCloud: (data: CloudLedgerData) => void;
   syncToCloud: () => Promise<void>;
 
@@ -348,10 +351,12 @@ export const useLedgerStore = create<LedgerState>()(
       isHydratingFromCloud: false,
       autoBackupEnabled: true,
       lastBackupAt: null,
+      backupStatus: 'idle',
 
       setSyncStatus: (status) => set({ syncStatus: status }),
       setAutoBackupEnabled: (enabled) => set({ autoBackupEnabled: enabled }),
       setLastBackupAt: (backupAt) => set({ lastBackupAt: backupAt }),
+      setBackupStatus: (status) => set({ backupStatus: status }),
 
       hydrateFromCloud: (data) => {
         const removedRecords = data.removedRecords ?? {};
