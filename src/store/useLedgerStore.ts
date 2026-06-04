@@ -34,6 +34,7 @@ interface LedgerState {
   autoBackupEnabled: boolean;
   lastBackupAt: string | null;
   backupStatus: BackupRunStatus;
+  lastDataChangedAt: string | null;
 
   setSyncStatus: (status: SyncStatus) => void;
   setAutoBackupEnabled: (enabled: boolean) => void;
@@ -352,6 +353,7 @@ export const useLedgerStore = create<LedgerState>()(
       autoBackupEnabled: true,
       lastBackupAt: null,
       backupStatus: 'idle',
+      lastDataChangedAt: null,
 
       setSyncStatus: (status) => set({ syncStatus: status }),
       setAutoBackupEnabled: (enabled) => set({ autoBackupEnabled: enabled }),
@@ -386,9 +388,14 @@ export const useLedgerStore = create<LedgerState>()(
       },
 
       setExchangeRate: (rate) => {
+        const changedAt = new Date().toISOString();
         set((state) => ({
           exchangeRate: rate,
-          records: state.records.map((r) => recalcRecord(r, rate)),
+          records: state.records.map((r) => ({
+            ...recalcRecord(r, rate),
+            updatedAt: changedAt,
+          })),
+          lastDataChangedAt: changedAt,
         }));
         void maybePushToCloud(get);
       },
@@ -425,6 +432,7 @@ export const useLedgerStore = create<LedgerState>()(
       clearSelection: () => set({ selectedIds: [] }),
 
       addRecord: (data) => {
+        const changedAt = new Date().toISOString();
         set((state) => {
           const record = buildRecord(data, state.exchangeRate);
           const knownClients = state.knownClients.includes(data.client)
@@ -437,12 +445,14 @@ export const useLedgerStore = create<LedgerState>()(
             records: [...state.records, record],
             knownClients,
             knownTypes,
+            lastDataChangedAt: changedAt,
           };
         });
         void maybePushToCloud(get);
       },
 
       updateRecord: (id, data) => {
+        const changedAt = new Date().toISOString();
         set((state) => {
           const knownClients = state.knownClients.includes(data.client)
             ? state.knownClients
@@ -458,6 +468,7 @@ export const useLedgerStore = create<LedgerState>()(
             ),
             knownClients,
             knownTypes,
+            lastDataChangedAt: changedAt,
           };
         });
         void maybePushToCloud(get);
@@ -470,6 +481,7 @@ export const useLedgerStore = create<LedgerState>()(
             r.id === id ? { ...r, deletedAt: now, updatedAt: now } : r,
           ),
           selectedIds: state.selectedIds.filter((sid) => sid !== id),
+          lastDataChangedAt: now,
         }));
         void maybePushToCloud(get);
       },
@@ -483,6 +495,7 @@ export const useLedgerStore = create<LedgerState>()(
               ids.has(r.id) ? { ...r, deletedAt: now, updatedAt: now } : r,
             ),
             selectedIds: [],
+            lastDataChangedAt: now,
           };
         });
         void maybePushToCloud(get);
@@ -499,6 +512,7 @@ export const useLedgerStore = create<LedgerState>()(
                 : r,
             ),
             selectedIds: [],
+            lastDataChangedAt: now,
           };
         });
         void maybePushToCloud(get);
@@ -513,16 +527,17 @@ export const useLedgerStore = create<LedgerState>()(
               : r,
           ),
           selectedIds: state.selectedIds.filter((sid) => sid !== id),
+          lastDataChangedAt: now,
         }));
         void maybePushToCloud(get);
       },
 
       importRecords: (imported) => {
+        const changedAt = new Date().toISOString();
         set((state) => {
           const clients = new Set(state.knownClients);
           const types = new Set(state.knownTypes);
-          const now = new Date().toISOString();
-          const records = imported.map((r) => ({ ...r, updatedAt: now }));
+          const records = imported.map((r) => ({ ...r, updatedAt: changedAt }));
           records.forEach((r) => {
             clients.add(r.client);
             if (r.type) types.add(r.type);
@@ -531,16 +546,19 @@ export const useLedgerStore = create<LedgerState>()(
             records: [...state.records, ...records],
             knownClients: [...clients],
             knownTypes: [...types],
+            lastDataChangedAt: changedAt,
           };
         });
         void maybePushToCloud(get);
       },
 
       resetToSeed: () => {
+        const changedAt = new Date().toISOString();
         set({
           records: createSeedRecords(),
           selectedIds: [],
           removedRecords: {},
+          lastDataChangedAt: changedAt,
         });
         void maybePushToCloud(get);
       },
@@ -559,6 +577,7 @@ export const useLedgerStore = create<LedgerState>()(
           records: state.records.map((r) =>
             r.id === id ? { ...r, deletedAt: undefined, updatedAt: now } : r,
           ),
+          lastDataChangedAt: now,
         }));
         void maybePushToCloud(get);
       },
@@ -568,6 +587,7 @@ export const useLedgerStore = create<LedgerState>()(
         set((state) => ({
           records: state.records.filter((r) => r.id !== id),
           removedRecords: { ...state.removedRecords, [id]: now },
+          lastDataChangedAt: now,
         }));
         void maybePushToCloud(get);
       },
@@ -577,12 +597,18 @@ export const useLedgerStore = create<LedgerState>()(
         const removedAt = new Date().toISOString();
         set((state) => {
           const removedRecords = { ...state.removedRecords };
+          let purged = false;
           const records = state.records.filter((r) => {
             const expired = Boolean(r.deletedAt && now - toTime(r.deletedAt) >= THIRTY_DAYS);
-            if (expired) removedRecords[r.id] = removedAt;
+            if (expired) {
+              removedRecords[r.id] = removedAt;
+              purged = true;
+            }
             return !expired;
           });
-          return { records, removedRecords };
+          return purged
+            ? { records, removedRecords, lastDataChangedAt: removedAt }
+            : { records, removedRecords };
         });
         void maybePushToCloud(get);
       },

@@ -2,6 +2,8 @@ export type SyncStatus = 'local' | 'connecting' | 'synced' | 'error';
 
 export type BackupRunStatus = 'idle' | 'backing-up' | 'success' | 'error';
 
+export type BackupTimezone = 'Asia/Shanghai';
+
 export type RecordStatus = '已结账' | '未结';
 
 export interface LedgerRecord {

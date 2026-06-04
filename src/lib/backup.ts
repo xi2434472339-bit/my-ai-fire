@@ -1,9 +1,10 @@
 import { ensureAnonymousLogin, getDb, LEDGER_ID } from '@/lib/tcb';
 import { isConfigured } from '@/lib/sync';
-import type { LedgerRecord, RemovedRecords } from '@/types';
+import type { BackupTimezone, LedgerRecord, RemovedRecords } from '@/types';
 
 const LOCAL_BACKUPS_KEY = 'sales-ledger-backups';
 const MAX_BACKUPS = 30;
+const BACKUP_TIMEZONE: BackupTimezone = 'Asia/Shanghai';
 
 export type BackupPermissionStatus =
   | 'not_checked'
@@ -26,7 +27,24 @@ export interface BackupResult {
 interface BackupPayload extends BackupInput {
   ledgerId: string;
   createdAt: string;
+  createdAtLocal: string;
+  timezone: BackupTimezone;
   recordCount: number;
+}
+
+function formatShanghaiTime(date: Date): string {
+  const parts = new Intl.DateTimeFormat('zh-CN', {
+    timeZone: BACKUP_TIMEZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  }).formatToParts(date);
+  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return `${values.year}-${values.month}-${values.day} ${values.hour}:${values.minute}:${values.second}`;
 }
 
 function readLocalBackups(): BackupPayload[] {
@@ -41,12 +59,15 @@ function readLocalBackups(): BackupPayload[] {
 }
 
 function createPayload(input: BackupInput): BackupPayload {
+  const now = new Date();
   return {
     ledgerId: LEDGER_ID,
     records: input.records,
     removedRecords: input.removedRecords,
     exchangeRate: input.exchangeRate,
-    createdAt: new Date().toISOString(),
+    createdAt: now.toISOString(),
+    createdAtLocal: formatShanghaiTime(now),
+    timezone: BACKUP_TIMEZONE,
     recordCount: input.records.length,
   };
 }

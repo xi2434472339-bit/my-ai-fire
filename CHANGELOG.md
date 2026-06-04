@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+### Added (2026-06-04) - 自动备份本地时间与防抖
+
+- backups 新增 createdAtLocal 和 timezone 字段，createdAtLocal 使用 Asia/Shanghai 的 YYYY-MM-DD HH:mm:ss 格式。
+- store 新增 lastDataChangedAt，用于记录销售数据、回收站数据和汇率的业务变更时间。
+- useAutoBackup 新增 3 分钟数据变更防抖备份，连续操作只生成最后一次备份。
+- 手动备份或 12 小时自动备份成功后，不再重复执行已覆盖的数据变更延迟备份。
+
 ### Added (2026-06-04) - 自动备份 P1
 
 - 首页新增备份状态面板，显示上一次备份时间、当前备份模式和 backups 权限检测结果。

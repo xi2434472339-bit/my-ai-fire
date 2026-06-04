@@ -2,6 +2,13 @@
 
 ## 2026-06-04
 
+### L2：自动备份本地时间字段 + 数据变更防抖备份
+- [x] backups 新增 createdAtLocal（中国时间）和 timezone=Asia/Shanghai
+- [x] 保留 createdAt UTC ISO 字段，records/removedRecords/exchangeRate/recordCount 不变
+- [x] store 新增 lastDataChangedAt，覆盖新增、编辑、删除、结账、恢复、永久删除、清空回收站、导入、汇率修改
+- [x] useAutoBackup 新增 3 分钟数据变更防抖备份，连续操作只保留最后一次
+- [x] 手动备份或 12 小时备份成功后，会抵消已覆盖的数据变更延迟备份
+
 ### L2：自动备份 P1 状态与权限检测
 - [x] 首页显示上一次备份时间，未备份时显示“暂无”
 - [x] 新增“立即备份”按钮，不受 12 小时间隔限制
