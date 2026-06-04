@@ -2,7 +2,7 @@
 
 ## 项目记忆
 
-- 项目名称：销售台账 (sales-ledger)
+- 项目名称：戈瓦记账本 (sales-ledger)
 - 云端同步使用腾讯云 CloudBase，环境 ID: sales-ledger-d9gp6k3tz489082a1
 - Firebase 代码存在于 src/lib/firebase.ts 但未被实际使用（死代码）
 - 密码存储在环境变量 VITE_ACCESS_PASSWORD 中

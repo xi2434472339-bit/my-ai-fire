@@ -15,7 +15,7 @@ export function isTcbConfigured(): boolean {
   if (!isCloudSyncEnabled()) return false;
   if (APP_ENV === "development") {
     console.warn(
-      "[销售台账] VITE_APP_ENV=development 且开启了云同步！请检查 .env 配置，避免污染正式数据。"
+      "[戈瓦记账本] VITE_APP_ENV=development 且开启了云同步！请检查 .env 配置，避免污染正式数据。"
     );
     return false;
   }

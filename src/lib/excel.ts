@@ -4,7 +4,7 @@ import { formatDateChinese } from './format';
 
 const HEADERS = ['客户', '日期', '类型', '数量', '单价', '金额', 'USTD', '状态', '备注'];
 
-export function exportToExcel(records: LedgerRecord[], filename = '销售台账.xlsx') {
+export function exportToExcel(records: LedgerRecord[], filename = '戈瓦记账本.xlsx') {
   const rows = records.map((r) => [
     r.client,
     formatDateChinese(r.date),
@@ -31,7 +31,7 @@ export function exportToExcel(records: LedgerRecord[], filename = '销售台账.
   ];
 
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, '销售台账');
+  XLSX.utils.book_append_sheet(wb, ws, '戈瓦记账本');
   XLSX.writeFile(wb, filename);
 }
 

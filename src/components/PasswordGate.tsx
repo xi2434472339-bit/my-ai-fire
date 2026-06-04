@@ -43,7 +43,7 @@ export function PasswordGate({ onAuthenticated }: PasswordGateProps) {
             <Lock className="h-6 w-6" />
           </div>
           <div className="text-center">
-            <h1 className="text-xl font-bold text-slate-800 dark:text-slate-100">销售台账</h1>
+            <h1 className="text-xl font-bold text-slate-800 dark:text-slate-100">戈瓦记账本</h1>
             <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">请输入访问密码</p>
           </div>
         </div>

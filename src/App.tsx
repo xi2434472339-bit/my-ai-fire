@@ -88,7 +88,7 @@ function LedgerApp() {
               <BookOpen className="h-5 w-5" />
             </div>
             <div>
-              <h1 className="text-xl font-bold tracking-tight">销售台账</h1>
+              <h1 className="text-xl font-bold tracking-tight">戈瓦记账本</h1>
               <p className="text-xs text-slate-500 dark:text-slate-400">
                 专业记账 · 实时统计 · 多人云端同步
               </p>
