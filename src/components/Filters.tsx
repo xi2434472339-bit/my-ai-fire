@@ -6,6 +6,21 @@ import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 
+const CLIENT_NAME_FIXES: Record<string, string> = {
+  "\u93c4\u30e7\u6553": "\u6625\u751f",
+  "\u7039\u56ec\ue5e3": "\u5b87\u98de",
+  "\u95c3\u630e\u6f83": "\u963f\u6770",
+  "\u6769\u581d\u53cd\u74a7\ue0a3\u5f41\u7ee1\ue1bc\u74d9": "\u8fc8\u5df4\u8d6b\u63d0\u7bee\u5b50",
+};
+
+function normalizeClientName(client: string): string {
+  return CLIENT_NAME_FIXES[client] ?? client;
+}
+
+function uniqueClientOptions(clients: string[]): string[] {
+  return Array.from(new Set(clients.map(normalizeClientName).filter(Boolean)));
+}
+
 
 export function Filters() {
   const filters = useLedgerStore((s) => s.filters);
@@ -18,6 +33,7 @@ export function Filters() {
   const hasStatus = filters.status !== "";
   const hasDateFrom = filters.dateFrom !== "";
   const hasDateTo = filters.dateTo !== "";
+  const clientOptions = uniqueClientOptions(knownClients);
 
   return (
     <div className="grid gap-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900 md:grid-cols-2 lg:grid-cols-5">
@@ -70,7 +86,7 @@ export function Filters() {
           )}
         </div>
         <datalist id="filter-client-list">
-          {knownClients.map((c) => (
+          {clientOptions.map((c) => (
             <option key={c} value={c} />
           ))}
         </datalist>
