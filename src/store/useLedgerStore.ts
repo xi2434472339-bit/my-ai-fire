@@ -15,6 +15,7 @@ import type {
 import { SEED_RECORDS } from '@/data/seed';
 import { calcAmount, calcUsd } from '@/lib/format';
 import { getSyncableState, pushLedger, isConfigured, fetchLedger } from '@/lib/sync';
+import { DEFAULT_KNOWN_CLIENTS, normalizeClientName, normalizeKnownClients } from '@/lib/clientNames';
 import { generateId } from '@/lib/utils';
 import type { CloudLedgerData } from '@/lib/sync';
 
@@ -116,7 +117,8 @@ function mergeRemovedRecords(
 function sanitizeRecord(raw: unknown): LedgerRecord | null {
   if (!raw || typeof raw !== 'object') return null;
   const r = raw as Partial<LedgerRecord>;
-  if (!r.id || !r.client) return null;
+  const client = normalizeClientName(r.client);
+  if (!r.id || !client) return null;
 
   const quantity = Number(r.quantity) || 0;
   const unitPrice = Number(r.unitPrice) || 0;
@@ -124,7 +126,7 @@ function sanitizeRecord(raw: unknown): LedgerRecord | null {
 
   return {
     id: String(r.id),
-    client: String(r.client),
+    client,
     date: String(r.date || new Date().toISOString().slice(0, 10)),
     type: String(r.type ?? ''),
     quantity,
@@ -252,7 +254,8 @@ async function maybePushToCloud(get: () => LedgerState) {
     }
     await pushLedger(recordsToPush);
     useLedgerStore.getState().setSyncStatus('synced');
-  } catch {
+  } catch (error) {
+    console.error("[sales-ledger] Cloud sync push failed", error);
     useLedgerStore.getState().setSyncStatus('error');
   }
 }
@@ -346,7 +349,7 @@ export const useLedgerStore = create<LedgerState>()(
       sortDirection: 'desc',
       selectedIds: [],
       removedRecords: {},
-      knownClients: ['鏄ョ敓', '瀹囬', '闃挎澃', '杩堝反璧彁绡瓙'],
+      knownClients: [...DEFAULT_KNOWN_CLIENTS],
       knownTypes: ['群码作品粉', '精准作品粉', '视频号冲颉粉'],
       syncStatus: isConfigured() ? 'connecting' : 'local',
       isHydratingFromCloud: false,
@@ -366,6 +369,10 @@ export const useLedgerStore = create<LedgerState>()(
           sanitizeRecords(data.records),
           removedRecords,
         );
+        const knownClients = normalizeKnownClients([
+          ...normalizeKnownClients(data.knownClients),
+          ...records.map((record) => record.client),
+        ]);
         set({
           isHydratingFromCloud: true,
           records,
@@ -374,7 +381,7 @@ export const useLedgerStore = create<LedgerState>()(
             typeof data.exchangeRate === 'number' && data.exchangeRate > 0
               ? data.exchangeRate
               : 7,
-          knownClients: Array.isArray(data.knownClients) ? data.knownClients : [],
+          knownClients,
           knownTypes: Array.isArray(data.knownTypes) ? data.knownTypes : [],
         });
         // Defer clearing the flag so any synchronous maybePushToCloud calls
@@ -434,10 +441,12 @@ export const useLedgerStore = create<LedgerState>()(
       addRecord: (data) => {
         const changedAt = new Date().toISOString();
         set((state) => {
-          const record = buildRecord(data, state.exchangeRate);
-          const knownClients = state.knownClients.includes(data.client)
-            ? state.knownClients
-            : [...state.knownClients, data.client];
+          const recordData = { ...data, client: normalizeClientName(data.client) };
+          const record = buildRecord(recordData, state.exchangeRate);
+          const currentKnownClients = normalizeKnownClients(state.knownClients);
+          const knownClients = currentKnownClients.includes(recordData.client)
+            ? currentKnownClients
+            : [...currentKnownClients, recordData.client];
           const knownTypes = state.knownTypes.includes(data.type)
             ? state.knownTypes
             : [...state.knownTypes, data.type];
@@ -454,16 +463,18 @@ export const useLedgerStore = create<LedgerState>()(
       updateRecord: (id, data) => {
         const changedAt = new Date().toISOString();
         set((state) => {
-          const knownClients = state.knownClients.includes(data.client)
-            ? state.knownClients
-            : [...state.knownClients, data.client];
+          const recordData = { ...data, client: normalizeClientName(data.client) };
+          const currentKnownClients = normalizeKnownClients(state.knownClients);
+          const knownClients = currentKnownClients.includes(recordData.client)
+            ? currentKnownClients
+            : [...currentKnownClients, recordData.client];
           const knownTypes = state.knownTypes.includes(data.type)
             ? state.knownTypes
             : [...state.knownTypes, data.type];
           return {
             records: state.records.map((r) =>
               r.id === id
-                ? { ...buildRecord(data, state.exchangeRate, id), deletedAt: r.deletedAt }
+                ? { ...buildRecord(recordData, state.exchangeRate, id), deletedAt: r.deletedAt }
                 : r,
             ),
             knownClients,
@@ -535,9 +546,13 @@ export const useLedgerStore = create<LedgerState>()(
       importRecords: (imported) => {
         const changedAt = new Date().toISOString();
         set((state) => {
-          const clients = new Set(state.knownClients);
+          const clients = new Set(normalizeKnownClients(state.knownClients));
           const types = new Set(state.knownTypes);
-          const records = imported.map((r) => ({ ...r, updatedAt: changedAt }));
+          const records = imported.map((r) => ({
+            ...r,
+            client: normalizeClientName(r.client),
+            updatedAt: changedAt,
+          }));
           records.forEach((r) => {
             clients.add(r.client);
             if (r.type) types.add(r.type);
@@ -652,7 +667,7 @@ export const useLedgerStore = create<LedgerState>()(
               ? p.exchangeRate
               : current.exchangeRate,
           darkMode: Boolean(p?.darkMode),
-          knownClients: Array.isArray(p?.knownClients) ? p.knownClients : current.knownClients,
+          knownClients: normalizeKnownClients(p?.knownClients, current.knownClients),
           knownTypes: Array.isArray(p?.knownTypes) ? p.knownTypes : current.knownTypes,
           autoBackupEnabled:
             typeof p?.autoBackupEnabled === 'boolean'

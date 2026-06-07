@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useLedgerStore } from '@/store/useLedgerStore';
 import { calcAmount, calcUsd, toISODate } from '@/lib/format';
+import { normalizeClientName, normalizeKnownClients } from '@/lib/clientNames';
 import type { LedgerRecord, RecordFormData } from '@/types';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
@@ -39,7 +40,7 @@ export function RecordForm({ open, onClose, record }: RecordFormProps) {
   useEffect(() => {
     if (record) {
       setForm({
-        client: record.client,
+        client: normalizeClientName(record.client),
         date: record.date,
         type: record.type,
         quantity: record.quantity,
@@ -47,7 +48,7 @@ export function RecordForm({ open, onClose, record }: RecordFormProps) {
         status: record.status,
         notes: record.notes,
       });
-      setClientInput(record.client);
+      setClientInput(normalizeClientName(record.client));
       setTypeInput(record.type);
     } else {
       setForm(emptyForm());
@@ -58,12 +59,13 @@ export function RecordForm({ open, onClose, record }: RecordFormProps) {
 
   const amount = calcAmount(form.quantity, form.unitPrice);
   const usd = calcUsd(amount, exchangeRate);
+  const clientOptions = normalizeKnownClients(knownClients);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const data: RecordFormData = {
       ...form,
-      client: clientInput.trim() || form.client,
+      client: normalizeClientName(clientInput || form.client),
       type: typeInput.trim() || form.type,
     };
     if (!data.client) return;
@@ -95,7 +97,7 @@ export function RecordForm({ open, onClose, record }: RecordFormProps) {
             required
           />
           <datalist id="client-list">
-            {knownClients.map((c) => (
+            {clientOptions.map((c) => (
               <option key={c} value={c} />
             ))}
           </datalist>
