@@ -36,6 +36,7 @@ const COLUMNS: { key: SortField | 'notes' | 'select' | 'actions'; label: string;
 
 const CENTERED_COLUMNS = new Set<SortField>([
   'date',
+  'type',
   'quantity',
   'unitPrice',
   'amount',
@@ -44,18 +45,25 @@ const CENTERED_COLUMNS = new Set<SortField>([
 
 const COLUMN_WIDTHS: Partial<Record<(typeof COLUMNS)[number]['key'], string>> = {
   select: 'w-9',
-  client: 'w-[8%]',
-  date: 'w-[12%]',
+  client: 'w-[7%]',
+  date: 'w-[10%]',
   type: 'w-[8%]',
   quantity: 'w-[6%]',
   unitPrice: 'w-[7%]',
-  amount: 'w-[10%]',
-  usd: 'w-[8%]',
+  amount: 'w-[8%]',
+  usd: 'w-[6%]',
   status: 'w-[8%]',
   channel: 'w-[9%]',
-  notes: 'w-[8%]',
+  notes: 'w-[15%]',
   actions: 'w-[10%]',
 };
+
+const COMPACT_COLUMNS = new Set<(typeof COLUMNS)[number]['key']>([
+  'client',
+  'date',
+  'amount',
+  'usd',
+]);
 
 function SortIcon({ active, direction }: { active: boolean; direction: 'asc' | 'desc' }) {
   if (!active) return <ArrowUpDown className="ml-1 inline h-3 w-3 opacity-40" />;
@@ -107,6 +115,7 @@ export function LedgerTable({ records, onEdit }: LedgerTableProps) {
                       'whitespace-nowrap px-2 py-2.5 text-left font-semibold',
                       col.sortable && 'cursor-pointer select-none hover:bg-blue-900/50',
                       COLUMN_WIDTHS[col.key],
+                      COMPACT_COLUMNS.has(col.key) && 'px-1',
                       col.key !== 'notes'
                         && col.key !== 'select'
                         && col.key !== 'actions'
@@ -169,13 +178,13 @@ export function LedgerTable({ records, onEdit }: LedgerTableProps) {
                         className="h-4 w-4 rounded"
                       />
                     </td>
-                    <td className="px-3 py-2 font-medium">{record.client}</td>
-                    <td className="whitespace-nowrap px-2 py-2 text-center">{formatDateChinese(record.date)}</td>
-                    <td className="px-3 py-2">{record.type}</td>
+                    <td className="px-1 py-2 font-medium">{record.client}</td>
+                    <td className="whitespace-nowrap px-1 py-2 text-center">{formatDateChinese(record.date)}</td>
+                    <td className="px-3 py-2 text-center">{record.type}</td>
                     <td className="px-2 py-2 text-center">{record.quantity}</td>
                     <td className="px-2 py-2 text-center">{record.unitPrice}</td>
-                    <td className="px-2 py-2 text-center font-semibold">{formatRmb(record.amount)}</td>
-                    <td className="px-2 py-2 text-center">{formatUsd(record.usd)}</td>
+                    <td className="px-1 py-2 text-center font-semibold">{formatRmb(record.amount)}</td>
+                    <td className="px-1 py-2 text-center">{formatUsd(record.usd)}</td>
                     <td className="px-2 py-2">
                       <span
                         className={cn(
@@ -199,7 +208,7 @@ export function LedgerTable({ records, onEdit }: LedgerTableProps) {
                         </span>
                       )}
                     </td>
-                    <td className="max-w-[200px] truncate px-3 py-2" title={record.notes}>
+                    <td className="whitespace-normal break-words px-2 py-2" title={record.notes}>
                       {record.notes}
                     </td>
                     <td className="px-2 py-2">
