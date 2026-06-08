@@ -2,7 +2,7 @@ import * as XLSX from 'xlsx';
 import type { LedgerRecord } from '@/types';
 import { formatDateChinese } from './format';
 
-const HEADERS = ['客户', '日期', '类型', '数量', '单价', '金额', 'USTD', '状态', '备注'];
+const HEADERS = ['客户', '日期', '类型', '数量', '单价', '金额', 'USTD', '状态', '渠道', '备注'];
 
 export function exportToExcel(records: LedgerRecord[], filename = '戈瓦记账本.xlsx') {
   const rows = records.map((r) => [
@@ -14,6 +14,7 @@ export function exportToExcel(records: LedgerRecord[], filename = '戈瓦记账�
     r.amount,
     r.usd,
     r.status,
+    r.channel,
     r.notes,
   ]);
 
@@ -27,6 +28,7 @@ export function exportToExcel(records: LedgerRecord[], filename = '戈瓦记账�
     { wch: 12 },
     { wch: 10 },
     { wch: 10 },
+    { wch: 16 },
     { wch: 24 },
   ];
 
@@ -90,30 +92,50 @@ export function importFromExcel(
         const wb = XLSX.read(data, { type: 'array', cellDates: true });
         const sheet = wb.Sheets[wb.SheetNames[0]];
         const json = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1 });
+        const headerRow = (json[0] ?? []).map((value) => String(value ?? '').trim());
+        const column = (name: string, fallback: number) => {
+          const index = headerRow.indexOf(name);
+          return index >= 0 ? index : fallback;
+        };
+        const clientColumn = column('客户', 0);
+        const dateColumn = column('日期', 1);
+        const typeColumn = column('类型', 2);
+        const quantityColumn = column('数量', 3);
+        const unitPriceColumn = column('单价', 4);
+        const amountColumn = column('金额', 5);
+        const usdColumn = column('USTD', 6);
+        const statusColumn = column('状态', 7);
+        const channelColumn = headerRow.indexOf('渠道');
+        const notesColumn = column('备注', channelColumn >= 0 ? 9 : 8);
 
         const records: LedgerRecord[] = [];
         for (let i = 1; i < json.length; i++) {
           const row = json[i] as unknown[];
           if (!row || row.length === 0) continue;
-          const client = String(row[0] ?? '').trim();
+          const client = String(row[clientColumn] ?? '').trim();
           if (!client) continue;
 
-          const quantity = parseNumber(row[3]);
-          const unitPrice = parseNumber(row[4]);
-          const amount = row[5] != null && row[5] !== '' ? parseNumber(row[5]) : calcAmount(quantity, unitPrice);
-          const usd = row[6] != null && row[6] !== '' ? parseNumber(row[6]) : calcUsd(amount, exchangeRate);
+          const quantity = parseNumber(row[quantityColumn]);
+          const unitPrice = parseNumber(row[unitPriceColumn]);
+          const amount = row[amountColumn] != null && row[amountColumn] !== ''
+            ? parseNumber(row[amountColumn])
+            : calcAmount(quantity, unitPrice);
+          const usd = row[usdColumn] != null && row[usdColumn] !== ''
+            ? parseNumber(row[usdColumn])
+            : calcUsd(amount, exchangeRate);
 
           records.push({
             id: generateId(),
             client,
-            date: parseDate(row[1]),
-            type: String(row[2] ?? '').trim(),
+            date: parseDate(row[dateColumn]),
+            type: String(row[typeColumn] ?? '').trim(),
             quantity,
             unitPrice,
             amount,
             usd,
-            status: parseStatus(row[7]),
-            notes: String(row[8] ?? '').trim(),
+            status: parseStatus(row[statusColumn]),
+            channel: channelColumn >= 0 ? String(row[channelColumn] ?? '').trim() : '',
+            notes: String(row[notesColumn] ?? '').trim(),
             updatedAt: new Date().toISOString(),
           });
         }

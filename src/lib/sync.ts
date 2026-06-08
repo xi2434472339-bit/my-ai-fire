@@ -6,6 +6,7 @@ export interface CloudLedgerData {
   exchangeRate: number;
   knownClients: string[];
   knownTypes: string[];
+  knownChannels: string[];
   removedRecords: RemovedRecords;
   updatedAt?: string;
 }
@@ -35,6 +36,7 @@ export async function pushLedger(data: CloudLedgerData): Promise<void> {
     exchangeRate: data.exchangeRate,
     knownClients: data.knownClients,
     knownTypes: data.knownTypes,
+    knownChannels: data.knownChannels,
     removedRecords: data.removedRecords,
     updatedAt: pushedAt,
   };
@@ -59,6 +61,7 @@ export async function fetchLedger(): Promise<CloudLedgerData | null> {
     exchangeRate: typeof raw.exchangeRate === 'number' ? raw.exchangeRate : 7,
     knownClients: Array.isArray(raw.knownClients) ? raw.knownClients as string[] : [],
     knownTypes: Array.isArray(raw.knownTypes) ? raw.knownTypes as string[] : [],
+    knownChannels: Array.isArray(raw.knownChannels) ? raw.knownChannels as string[] : [],
     removedRecords:
       raw.removedRecords && typeof raw.removedRecords === 'object'
         ? raw.removedRecords as RemovedRecords
@@ -72,6 +75,7 @@ export function getSyncableState(state: {
   exchangeRate: number;
   knownClients: string[];
   knownTypes: string[];
+  knownChannels: string[];
   removedRecords: RemovedRecords;
 }): CloudLedgerData {
   return {
@@ -79,6 +83,7 @@ export function getSyncableState(state: {
     exchangeRate: state.exchangeRate,
     knownClients: state.knownClients,
     knownTypes: state.knownTypes,
+    knownChannels: state.knownChannels,
     removedRecords: state.removedRecords,
   };
 }

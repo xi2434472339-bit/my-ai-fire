@@ -54,6 +54,20 @@ cp .env.example .env
 
 Netlify 后台 → Site settings → Environment variables，添加所有 `VITE_*` 环境变量，然后重新部署。
 
+### 部署到 Vercel
+
+在 Vercel 项目的 Settings → Environment Variables 中，为 Production 添加：
+
+```env
+VITE_APP_ENV=production
+VITE_ENABLE_CLOUD_SYNC=true
+VITE_TCB_ENV_ID=你的CloudBase环境ID
+VITE_LEDGER_ID=sales-ledger-main
+VITE_ACCESS_PASSWORD=你的访问密码
+```
+
+保存后必须重新部署。项目根目录的本地 `.env` 只供 `npm run dev` 使用，不会自动成为 Vercel 的生产环境变量。
+
 ### 4. 验证同步
 
 - 页面左上角显示 **「云端已同步」** 即成功

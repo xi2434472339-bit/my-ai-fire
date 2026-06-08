@@ -17,19 +17,20 @@ export function Filters() {
   const hasSearch = filters.search.trim() !== "";
   const hasClient = filters.client.trim() !== "";
   const hasStatus = filters.status !== "";
+  const hasChannelAssignment = filters.channelAssignment !== "";
   const hasDateFrom = filters.dateFrom !== "";
   const hasDateTo = filters.dateTo !== "";
   const clientOptions = normalizeKnownClients(knownClients);
 
   return (
-    <div className="grid gap-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900 md:grid-cols-2 lg:grid-cols-5">
+    <div className="grid gap-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900 md:grid-cols-2 lg:grid-cols-6">
       <div className="space-y-1.5">
         <Label>搜索</Label>
         <div className="relative">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" />
           <Input
             className="pl-8 pr-8"
-            placeholder="客户、类型、备注..."
+            placeholder="客户、类型、渠道、备注..."
             value={filters.search}
             onChange={(e) => setFilters({ search: e.target.value })}
           />
@@ -38,6 +39,35 @@ export function Filters() {
               type="button"
               className="absolute right-2 top-2.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
               onClick={() => setFilters({ search: "" })}
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div className="space-y-1.5">
+        <Label>渠道安排</Label>
+        <div className="flex items-center gap-1">
+          <Select
+            className="flex-1"
+            value={filters.channelAssignment}
+            onChange={(e) =>
+              setFilters({
+                channelAssignment: e.target.value as "" | "assigned" | "unassigned",
+              })
+            }
+          >
+            <option value="">全部渠道</option>
+            <option value="assigned">已安排</option>
+            <option value="unassigned">未安排</option>
+          </Select>
+          {hasChannelAssignment && (
+            <button
+              type="button"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-slate-300 bg-white text-slate-400 hover:bg-slate-50 hover:text-slate-600 dark:border-slate-600 dark:bg-slate-800 dark:hover:bg-slate-700 dark:hover:text-slate-200"
+              onClick={() => setFilters({ channelAssignment: "" })}
+              title="清空渠道筛选"
             >
               <X className="h-4 w-4" />
             </button>
@@ -183,4 +213,3 @@ export function ExchangeRateSetting() {
     </div>
   );
 }
-

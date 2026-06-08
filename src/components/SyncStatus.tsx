@@ -1,7 +1,7 @@
 import { Cloud, CloudOff, Loader2, Wifi } from "lucide-react";
 import { useLedgerStore } from "@/store/useLedgerStore";
 import { cn } from "@/lib/utils";
-import { isCloudSyncEnabled } from "@/lib/tcb";
+import { getCloudSyncConfigIssue, isTcbConfigured } from "@/lib/tcb";
 
 const statusConfig = {
   local: {
@@ -28,7 +28,8 @@ const statusConfig = {
 
 export function SyncStatus() {
   const syncStatus = useLedgerStore((s) => s.syncStatus);
-  const cloudEnabled = isCloudSyncEnabled();
+  const cloudEnabled = isTcbConfigured();
+  const configIssue = getCloudSyncConfigIssue();
   const config = statusConfig[syncStatus];
   const Icon = config.icon;
 
@@ -40,7 +41,7 @@ export function SyncStatus() {
       )}
       title={
         !cloudEnabled
-          ? "云端同步已禁用，数据仅保存在本地浏览器"
+          ? `Cloud sync unavailable: ${configIssue ?? "configuration incomplete"}`
           : syncStatus === "synced"
             ? "多人修改会实时同步"
             : config.label
@@ -51,4 +52,3 @@ export function SyncStatus() {
     </div>
   );
 }
-

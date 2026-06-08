@@ -10,16 +10,21 @@ export function isCloudSyncEnabled(): boolean {
   return enabled === "true";
 }
 
+export function getCloudSyncConfigIssue(): string | null {
+  if (!isCloudSyncEnabled()) return "VITE_ENABLE_CLOUD_SYNC is not true";
+  if (!ENV_ID) return "VITE_TCB_ENV_ID is missing";
+  if (APP_ENV === "development") return "VITE_APP_ENV is development";
+  return null;
+}
+
 export function isTcbConfigured(): boolean {
-  if (!Boolean(ENV_ID)) return false;
-  if (!isCloudSyncEnabled()) return false;
-  if (APP_ENV === "development") {
+  const issue = getCloudSyncConfigIssue();
+  if (issue === "VITE_APP_ENV is development") {
     console.warn(
       "[戈瓦记账本] VITE_APP_ENV=development 且开启了云同步！请检查 .env 配置，避免污染正式数据。"
     );
-    return false;
   }
-  return true;
+  return issue === null;
 }
 
 let appInstance: ReturnType<typeof cloudbase.init> | null = null;

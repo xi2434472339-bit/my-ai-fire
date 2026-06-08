@@ -29,9 +29,33 @@ const COLUMNS: { key: SortField | 'notes' | 'select' | 'actions'; label: string;
   { key: 'amount', label: '金额', sortable: true },
   { key: 'usd', label: 'USDT', sortable: true },
   { key: 'status', label: '状态', sortable: true },
+  { key: 'channel', label: '渠道', sortable: true },
   { key: 'notes', label: '备注', sortable: false },
   { key: 'actions', label: '操作', sortable: false },
 ];
+
+const CENTERED_COLUMNS = new Set<SortField>([
+  'date',
+  'quantity',
+  'unitPrice',
+  'amount',
+  'usd',
+]);
+
+const COLUMN_WIDTHS: Partial<Record<(typeof COLUMNS)[number]['key'], string>> = {
+  select: 'w-9',
+  client: 'w-[8%]',
+  date: 'w-[12%]',
+  type: 'w-[8%]',
+  quantity: 'w-[6%]',
+  unitPrice: 'w-[7%]',
+  amount: 'w-[10%]',
+  usd: 'w-[8%]',
+  status: 'w-[8%]',
+  channel: 'w-[9%]',
+  notes: 'w-[8%]',
+  actions: 'w-[10%]',
+};
 
 function SortIcon({ active, direction }: { active: boolean; direction: 'asc' | 'desc' }) {
   if (!active) return <ArrowUpDown className="ml-1 inline h-3 w-3 opacity-40" />;
@@ -72,18 +96,24 @@ export function LedgerTable({ records, onEdit }: LedgerTableProps) {
   return (
     <>
       <div className="overflow-hidden rounded-lg border border-slate-200 shadow-sm dark:border-slate-700">
-        <div className="overflow-x-auto scrollbar-thin">
-          <table className="w-full min-w-[960px] border-collapse text-sm">
+        <div className="overflow-hidden">
+          <table className="w-full table-fixed border-collapse text-sm">
             <thead>
               <tr className="bg-ledger-header text-white">
                 {COLUMNS.map((col) => (
                   <th
                     key={col.key}
                     className={cn(
-                      'whitespace-nowrap px-3 py-2.5 text-left font-semibold',
+                      'whitespace-nowrap px-2 py-2.5 text-left font-semibold',
                       col.sortable && 'cursor-pointer select-none hover:bg-blue-900/50',
+                      COLUMN_WIDTHS[col.key],
+                      col.key !== 'notes'
+                        && col.key !== 'select'
+                        && col.key !== 'actions'
+                        && CENTERED_COLUMNS.has(col.key as SortField)
+                        && 'text-center',
                       col.key === 'select' && 'w-10 text-center',
-                      col.key === 'actions' && 'w-28 text-center',
+                      col.key === 'actions' && 'text-center',
                     )}
                     onClick={() => {
                       if (col.sortable && col.key !== 'notes' && col.key !== 'select' && col.key !== 'actions') {
@@ -140,13 +170,13 @@ export function LedgerTable({ records, onEdit }: LedgerTableProps) {
                       />
                     </td>
                     <td className="px-3 py-2 font-medium">{record.client}</td>
-                    <td className="px-3 py-2 whitespace-nowrap">{formatDateChinese(record.date)}</td>
+                    <td className="whitespace-nowrap px-2 py-2 text-center">{formatDateChinese(record.date)}</td>
                     <td className="px-3 py-2">{record.type}</td>
-                    <td className="px-3 py-2 text-right">{record.quantity}</td>
-                    <td className="px-3 py-2 text-right">{record.unitPrice}</td>
-                    <td className="px-3 py-2 text-right font-semibold">{formatRmb(record.amount)}</td>
-                    <td className="px-3 py-2 text-right">{formatUsd(record.usd)}</td>
-                    <td className="px-3 py-2">
+                    <td className="px-2 py-2 text-center">{record.quantity}</td>
+                    <td className="px-2 py-2 text-center">{record.unitPrice}</td>
+                    <td className="px-2 py-2 text-center font-semibold">{formatRmb(record.amount)}</td>
+                    <td className="px-2 py-2 text-center">{formatUsd(record.usd)}</td>
+                    <td className="px-2 py-2">
                       <span
                         className={cn(
                           'inline-block rounded-full px-2 py-0.5 text-xs font-medium',
@@ -157,6 +187,17 @@ export function LedgerTable({ records, onEdit }: LedgerTableProps) {
                       >
                         {record.status}
                       </span>
+                    </td>
+                    <td className="truncate px-2 py-2" title={record.channel || '未安排'}>
+                      {record.channel ? (
+                        <span className="inline-block rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                          {record.channel}
+                        </span>
+                      ) : (
+                        <span className="inline-block rounded-full bg-amber-200 px-2 py-0.5 text-xs font-semibold text-amber-900 dark:bg-amber-900 dark:text-amber-200">
+                          未安排
+                        </span>
+                      )}
                     </td>
                     <td className="max-w-[200px] truncate px-3 py-2" title={record.notes}>
                       {record.notes}

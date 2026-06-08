@@ -30,6 +30,7 @@ interface LedgerState {
   removedRecords: RemovedRecords;
   knownClients: string[];
   knownTypes: string[];
+  knownChannels: string[];
   syncStatus: SyncStatus;
   isHydratingFromCloud: boolean;
   autoBackupEnabled: boolean;
@@ -75,6 +76,7 @@ const defaultFilters: FilterState = {
   search: '',
   client: '',
   status: '',
+  channelAssignment: '',
   dateFrom: '',
   dateTo: '',
 };
@@ -99,6 +101,13 @@ function normalizeUpdatedAt(record: Partial<LedgerRecord>): string {
   // Sales date is business data, not a sync version. Legacy records without
   // mutation metadata must sort behind real delete/restore/edit operations.
   return LEGACY_UPDATED_AT;
+}
+
+function normalizeKnownChannels(channels: unknown): string[] {
+  if (!Array.isArray(channels)) return [];
+  return Array.from(
+    new Set(channels.map((channel) => String(channel ?? '').trim()).filter(Boolean)),
+  );
 }
 
 function mergeRemovedRecords(
@@ -134,6 +143,7 @@ function sanitizeRecord(raw: unknown): LedgerRecord | null {
     amount,
     usd: Number(r.usd) || 0,
     status: normalizeStatus(r.status),
+    channel: String(r.channel ?? '').trim(),
     notes: String(r.notes ?? ''),
     updatedAt: normalizeUpdatedAt(r),
     deletedAt: r.deletedAt ? String(r.deletedAt) : undefined,
@@ -275,6 +285,7 @@ export function filterRecords(
       (r) =>
         (r.client ?? '').toLowerCase().includes(q) ||
         (r.type ?? '').toLowerCase().includes(q) ||
+        (r.channel ?? '').toLowerCase().includes(q) ||
         (r.notes ?? '').toLowerCase().includes(q) ||
         (r.status ?? '').includes(searchQuery),
     );
@@ -289,6 +300,12 @@ export function filterRecords(
 
   if (filters.status) {
     result = result.filter((r) => r.status === filters.status);
+  }
+
+  if (filters.channelAssignment === 'assigned') {
+    result = result.filter((r) => Boolean(r.channel.trim()));
+  } else if (filters.channelAssignment === 'unassigned') {
+    result = result.filter((r) => !r.channel.trim());
   }
 
   if (filters.dateFrom) {
@@ -351,6 +368,7 @@ export const useLedgerStore = create<LedgerState>()(
       removedRecords: {},
       knownClients: [...DEFAULT_KNOWN_CLIENTS],
       knownTypes: ['群码作品粉', '精准作品粉', '视频号冲颉粉'],
+      knownChannels: [],
       syncStatus: isConfigured() ? 'connecting' : 'local',
       isHydratingFromCloud: false,
       autoBackupEnabled: true,
@@ -373,6 +391,10 @@ export const useLedgerStore = create<LedgerState>()(
           ...normalizeKnownClients(data.knownClients),
           ...records.map((record) => record.client),
         ]);
+        const knownChannels = normalizeKnownChannels([
+          ...normalizeKnownChannels(data.knownChannels),
+          ...records.map((record) => record.channel),
+        ]);
         set({
           isHydratingFromCloud: true,
           records,
@@ -383,6 +405,7 @@ export const useLedgerStore = create<LedgerState>()(
               : 7,
           knownClients,
           knownTypes: Array.isArray(data.knownTypes) ? data.knownTypes : [],
+          knownChannels,
         });
         // Defer clearing the flag so any synchronous maybePushToCloud calls
         // triggered by the same event loop tick see isHydratingFromCloud=true
@@ -441,7 +464,11 @@ export const useLedgerStore = create<LedgerState>()(
       addRecord: (data) => {
         const changedAt = new Date().toISOString();
         set((state) => {
-          const recordData = { ...data, client: normalizeClientName(data.client) };
+          const recordData = {
+            ...data,
+            client: normalizeClientName(data.client),
+            channel: data.channel.trim(),
+          };
           const record = buildRecord(recordData, state.exchangeRate);
           const currentKnownClients = normalizeKnownClients(state.knownClients);
           const knownClients = currentKnownClients.includes(recordData.client)
@@ -450,10 +477,15 @@ export const useLedgerStore = create<LedgerState>()(
           const knownTypes = state.knownTypes.includes(data.type)
             ? state.knownTypes
             : [...state.knownTypes, data.type];
+          const knownChannels = normalizeKnownChannels([
+            ...state.knownChannels,
+            recordData.channel,
+          ]);
           return {
             records: [...state.records, record],
             knownClients,
             knownTypes,
+            knownChannels,
             lastDataChangedAt: changedAt,
           };
         });
@@ -463,7 +495,11 @@ export const useLedgerStore = create<LedgerState>()(
       updateRecord: (id, data) => {
         const changedAt = new Date().toISOString();
         set((state) => {
-          const recordData = { ...data, client: normalizeClientName(data.client) };
+          const recordData = {
+            ...data,
+            client: normalizeClientName(data.client),
+            channel: data.channel.trim(),
+          };
           const currentKnownClients = normalizeKnownClients(state.knownClients);
           const knownClients = currentKnownClients.includes(recordData.client)
             ? currentKnownClients
@@ -471,6 +507,10 @@ export const useLedgerStore = create<LedgerState>()(
           const knownTypes = state.knownTypes.includes(data.type)
             ? state.knownTypes
             : [...state.knownTypes, data.type];
+          const knownChannels = normalizeKnownChannels([
+            ...state.knownChannels,
+            recordData.channel,
+          ]);
           return {
             records: state.records.map((r) =>
               r.id === id
@@ -479,6 +519,7 @@ export const useLedgerStore = create<LedgerState>()(
             ),
             knownClients,
             knownTypes,
+            knownChannels,
             lastDataChangedAt: changedAt,
           };
         });
@@ -548,19 +589,23 @@ export const useLedgerStore = create<LedgerState>()(
         set((state) => {
           const clients = new Set(normalizeKnownClients(state.knownClients));
           const types = new Set(state.knownTypes);
+          const channels = new Set(normalizeKnownChannels(state.knownChannels));
           const records = imported.map((r) => ({
             ...r,
             client: normalizeClientName(r.client),
+            channel: r.channel.trim(),
             updatedAt: changedAt,
           }));
           records.forEach((r) => {
             clients.add(r.client);
             if (r.type) types.add(r.type);
+            if (r.channel) channels.add(r.channel);
           });
           return {
             records: [...state.records, ...records],
             knownClients: [...clients],
             knownTypes: [...types],
+            knownChannels: [...channels],
             lastDataChangedAt: changedAt,
           };
         });
@@ -645,6 +690,7 @@ export const useLedgerStore = create<LedgerState>()(
         darkMode: state.darkMode,
         knownClients: state.knownClients,
         knownTypes: state.knownTypes,
+        knownChannels: state.knownChannels,
         autoBackupEnabled: state.autoBackupEnabled,
         lastBackupAt: state.lastBackupAt,
       }),
@@ -669,6 +715,7 @@ export const useLedgerStore = create<LedgerState>()(
           darkMode: Boolean(p?.darkMode),
           knownClients: normalizeKnownClients(p?.knownClients, current.knownClients),
           knownTypes: Array.isArray(p?.knownTypes) ? p.knownTypes : current.knownTypes,
+          knownChannels: normalizeKnownChannels(p?.knownChannels),
           autoBackupEnabled:
             typeof p?.autoBackupEnabled === 'boolean'
               ? p.autoBackupEnabled

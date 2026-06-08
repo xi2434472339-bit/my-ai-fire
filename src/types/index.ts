@@ -16,6 +16,7 @@ export interface LedgerRecord {
   amount: number;
   usd: number;
   status: RecordStatus;
+  channel: string;
   notes: string;
   updatedAt: string;
   deletedAt?: string;
@@ -25,7 +26,7 @@ export type RemovedRecords = Record<string, string>;
 
 export type SortField = keyof Pick<
   LedgerRecord,
-  'client' | 'date' | 'type' | 'quantity' | 'unitPrice' | 'amount' | 'usd' | 'status'
+  'client' | 'date' | 'type' | 'quantity' | 'unitPrice' | 'amount' | 'usd' | 'status' | 'channel'
 >;
 
 export type SortDirection = 'asc' | 'desc';
@@ -34,6 +35,7 @@ export interface FilterState {
   search: string;
   client: string;
   status: '' | RecordStatus;
+  channelAssignment: '' | 'assigned' | 'unassigned';
   dateFrom: string;
   dateTo: string;
 }
@@ -52,5 +54,6 @@ export interface RecordFormData {
   quantity: number;
   unitPrice: number;
   status: RecordStatus;
+  channel: string;
   notes: string;
 }

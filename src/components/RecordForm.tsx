@@ -23,12 +23,14 @@ const emptyForm = (): RecordFormData => ({
   quantity: 0,
   unitPrice: 0,
   status: '未结',
+  channel: '',
   notes: '',
 });
 
 export function RecordForm({ open, onClose, record }: RecordFormProps) {
   const knownClients = useLedgerStore((s) => s.knownClients);
   const knownTypes = useLedgerStore((s) => s.knownTypes);
+  const knownChannels = useLedgerStore((s) => s.knownChannels);
   const exchangeRate = useLedgerStore((s) => s.exchangeRate);
   const addRecord = useLedgerStore((s) => s.addRecord);
   const updateRecord = useLedgerStore((s) => s.updateRecord);
@@ -46,6 +48,7 @@ export function RecordForm({ open, onClose, record }: RecordFormProps) {
         quantity: record.quantity,
         unitPrice: record.unitPrice,
         status: record.status,
+        channel: record.channel,
         notes: record.notes,
       });
       setClientInput(normalizeClientName(record.client));
@@ -67,6 +70,7 @@ export function RecordForm({ open, onClose, record }: RecordFormProps) {
       ...form,
       client: normalizeClientName(clientInput || form.client),
       type: typeInput.trim() || form.type,
+      channel: form.channel.trim(),
     };
     if (!data.client) return;
 
@@ -183,6 +187,22 @@ export function RecordForm({ open, onClose, record }: RecordFormProps) {
             <span>USTD</span>
             <span className="font-medium">{usd.toFixed(2)}</span>
           </div>
+        </div>
+
+        <div className="space-y-1.5">
+          <Label htmlFor="channel">渠道</Label>
+          <Input
+            id="channel"
+            list="channel-list"
+            value={form.channel}
+            onChange={(e) => setForm({ ...form, channel: e.target.value })}
+            placeholder="输入或选择渠道名称（可留空）"
+          />
+          <datalist id="channel-list">
+            {knownChannels.map((channel) => (
+              <option key={channel} value={channel} />
+            ))}
+          </datalist>
         </div>
 
         <div className="space-y-1.5">
